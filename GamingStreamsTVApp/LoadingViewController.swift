@@ -12,12 +12,19 @@ import Foundation
 //This is not a protocol because I don't want to copy this code in each controller
 
 class LoadingViewController : UIViewController {
+    
+    internal let TOP_BAR_HEIGHT : CGFloat = 100
+    
     internal var collectionView : UICollectionView!
     internal var topBar : TopBarView!
     
     internal var loadingView : LoadingView?
     internal var errorView : ErrorView?
     private var reloadButton : UIButton?
+    
+    override func viewDidLoad() {
+        self.view.backgroundColor = UIColor(white: 0.4, alpha: 1)
+    }
     
     /*
     * displayLoadingView()

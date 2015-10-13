@@ -21,6 +21,7 @@ class VideoViewController : UIViewController {
     private var videoPlayer : AVPlayer?
     private var streams : [TwitchStreamVideo]?
     private var currentStream : TwitchStream?
+    private var currentStreamVideo: TwitchStreamVideo?
     private var chatView : TwitchChatView?
     private var modalMenu : ModalMenuView?
     private var modalMenuOptions : [String : [MenuOption]]?
@@ -36,7 +37,7 @@ class VideoViewController : UIViewController {
     */
     convenience init(stream : TwitchStream){
         self.init(nibName: nil, bundle: nil)
-        self.currentStream = stream;
+        self.currentStream = stream
         
         self.view.backgroundColor = UIColor.blackColor()
         
@@ -46,7 +47,7 @@ class VideoViewController : UIViewController {
         self.view.addGestureRecognizer(longPressRecognizer)
         
         let tapRecognizer = UITapGestureRecognizer(target: self, action: "pause")
-        tapRecognizer.allowedPressTypes = [NSNumber(integer: UIPressType.PlayPause.rawValue)];
+        tapRecognizer.allowedPressTypes = [NSNumber(integer: UIPressType.PlayPause.rawValue)]
         self.view.addGestureRecognizer(tapRecognizer)
         
         let gestureRecognizer = UITapGestureRecognizer(target: self, action: "handleMenuPress")
@@ -88,8 +89,8 @@ class VideoViewController : UIViewController {
             
             if let streams = streams {
                 self.streams = streams
-                let streamObject = streams[0]
-                let streamAsset = AVURLAsset(URL: streamObject.url!)
+                self.currentStreamVideo = streams[0]
+                let streamAsset = AVURLAsset(URL: self.currentStreamVideo!.url)
                 let streamItem = AVPlayerItem(asset: streamAsset)
                 
                 self.videoPlayer = AVPlayer(playerItem: streamItem)
@@ -100,12 +101,6 @@ class VideoViewController : UIViewController {
                 
             }
         }
-    }
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        // Do any additional setup after loading the view, typically from a nib.
-        
     }
     
     /*
@@ -307,7 +302,8 @@ class VideoViewController : UIViewController {
             if let streams = self.streams {
                 for stream in streams {
                     if stream.quality == qualityIdentifier {
-                        let streamAsset = AVURLAsset(URL: stream.url!)
+                        currentStreamVideo = stream
+                        let streamAsset = AVURLAsset(URL: stream.url)
                         let streamItem = AVPlayerItem(asset: streamAsset)
                         self.videoPlayer?.replaceCurrentItemWithPlayerItem(streamItem)
                         dismissMenu()
@@ -322,6 +318,12 @@ class VideoViewController : UIViewController {
             if player.rate == 1 {
                 player.pause()
             } else {
+                if let currentVideo = currentStreamVideo {
+                    //do this to bring it back in sync
+                    let streamAsset = AVURLAsset(URL: currentVideo.url)
+                    let streamItem = AVPlayerItem(asset: streamAsset)
+                    player.replaceCurrentItemWithPlayerItem(streamItem)
+                }
                 player.play()
             }
         }
