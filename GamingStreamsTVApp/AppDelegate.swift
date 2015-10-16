@@ -14,7 +14,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(application: UIApplication, didFinishLaunchingWithOptions launchOptions: [NSObject: AnyObject]?) -> Bool {
         let window = UIWindow.init(frame: UIScreen.mainScreen().bounds)
-        window.rootViewController = GamesViewController()
+        window.rootViewController = TwitchGamesViewController()
         window.makeKeyAndVisible()
         self.window = window
         
@@ -42,7 +42,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func applicationWillTerminate(application: UIApplication) {
         // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
     }
-
 
 }
 

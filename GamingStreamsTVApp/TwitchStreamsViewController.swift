@@ -1,5 +1,5 @@
 //
-//  StreamsViewController.swift
+//  TwitchStreamsViewController.swift
 //  GamingStreamsTVApp
 //
 //  Created by Olivier Boucher on 2015-09-14.
@@ -8,12 +8,14 @@ import UIKit
 import Foundation
 
 
-class StreamsViewController : LoadingViewController {
+class TwitchStreamsViewController : LoadingViewController {
     private let LOADING_BUFFER = 12
     private let NUM_COLUMNS = 3
-    private let ITEMS_INSETS_X : CGFloat = 45
-    private let ITEMS_INSETS_Y : CGFloat = 0
-    private let PREVIEW_IMG_HEIGHT_RATIO : CGFloat = 1.777777777 //Computed from sampled image from twitch api
+    override var ITEMS_INSETS_X : CGFloat {
+        get {
+            return 45
+        }
+    }
     
     private var game : TwitchGame!
     private var streams = [TwitchStream]()
@@ -69,38 +71,7 @@ class StreamsViewController : LoadingViewController {
     }
     
     private func configureViews() {
-        self.topBar = TopBarView(frame: CGRectZero, withMainTitle: "Live Streams - \(self.game!.name)")
-        self.topBar.translatesAutoresizingMaskIntoConstraints = false
-        
-        self.view.addSubview(self.topBar)
-        
-        
-        let layout : UICollectionViewFlowLayout = UICollectionViewFlowLayout()
-        layout.scrollDirection = UICollectionViewScrollDirection.Vertical
-        layout.minimumInteritemSpacing = ITEMS_INSETS_X
-        layout.minimumLineSpacing = 35
-        
-        self.collectionView = UICollectionView(frame: CGRectZero, collectionViewLayout: layout)
-        self.collectionView.translatesAutoresizingMaskIntoConstraints = false
-        self.collectionView.registerClass(ItemCellView.classForCoder(), forCellWithReuseIdentifier: ItemCellView.CELL_IDENTIFIER)
-        self.collectionView.dataSource = self
-        self.collectionView.delegate = self
-        self.collectionView.contentInset = UIEdgeInsets(top: TOP_BAR_HEIGHT + 10, left: ITEMS_INSETS_X, bottom: ITEMS_INSETS_Y, right: ITEMS_INSETS_X)
-        
-        self.view.addSubview(self.collectionView)
-        self.view.bringSubviewToFront(self.topBar)
-        
-        let viewDict = ["topbar" : topBar, "collection" : collectionView]
-        
-        self.topBar.addConstraint(NSLayoutConstraint(item: topBar, attribute: .Height, relatedBy: .Equal, toItem: nil, attribute: .NotAnAttribute, multiplier: 1.0, constant: TOP_BAR_HEIGHT))
-
-        self.view.addConstraints(NSLayoutConstraint.constraintsWithVisualFormat("V:|[topbar]", options: [], metrics: nil, views: viewDict))
-        
-        self.view.addConstraints(NSLayoutConstraint.constraintsWithVisualFormat("V:|[collection]|", options: [], metrics: nil, views: viewDict))
-        
-        self.view.addConstraints(NSLayoutConstraint.constraintsWithVisualFormat("H:|[topbar]|", options: [], metrics: nil, views: viewDict))
-        
-        self.view.addConstraints(NSLayoutConstraint.constraintsWithVisualFormat("H:|[collection]|", options: [], metrics: nil, views: viewDict))
+        super.configureViews("Live Streams - \(self.game!.name)", centerView: nil, leftView: nil, rightView: nil)
     }
     
     override func reloadContent() {
@@ -113,11 +84,11 @@ class StreamsViewController : LoadingViewController {
 // MARK - UICollectionViewDelegate interface
 ////////////////////////////////////////////
 
-extension StreamsViewController : UICollectionViewDelegate {
+extension TwitchStreamsViewController {
     
     func collectionView(collectionView: UICollectionView, didSelectItemAtIndexPath indexPath: NSIndexPath) {
         let selectedStream = streams[indexPath.row]
-        let videoViewController = VideoViewController(stream: selectedStream)
+        let videoViewController = TwitchVideoViewController(stream: selectedStream)
         
         self.presentViewController(videoViewController, animated: true, completion: nil)
     }
@@ -144,10 +115,10 @@ extension StreamsViewController : UICollectionViewDelegate {
                     paths.append(NSIndexPath(forItem: i + self.streams.count, inSection: 0))
                 }
                     
-                self.collectionView!.performBatchUpdates({
+                self.collectionView.performBatchUpdates({
                     self.streams.appendContentsOf(filteredStreams)
                 
-                    self.collectionView!.insertItemsAtIndexPaths(paths)
+                    self.collectionView.insertItemsAtIndexPaths(paths)
                 
                 }, completion: nil)
             }
@@ -159,13 +130,13 @@ extension StreamsViewController : UICollectionViewDelegate {
 // MARK - UICollectionViewDelegateFlowLayout interface
 //////////////////////////////////////////////////////
 
-extension StreamsViewController : UICollectionViewDelegateFlowLayout {
+extension TwitchStreamsViewController {
     
     func collectionView(collectionView: UICollectionView,
         layout collectionViewLayout: UICollectionViewLayout,
         sizeForItemAtIndexPath indexPath: NSIndexPath) -> CGSize {
             let width = collectionView.bounds.width / CGFloat(NUM_COLUMNS) - CGFloat(ITEMS_INSETS_X * 2)
-            let height = width / PREVIEW_IMG_HEIGHT_RATIO + (ItemCellView.LABEL_HEIGHT * 2) //There 2 labels, top & bottom
+            let height = width / STREAM_IMG_HEIGHT_RATIO + (ItemCellView.LABEL_HEIGHT * 2) //There 2 labels, top & bottom
             
             return CGSize(width: width, height: height)
     }
@@ -173,8 +144,7 @@ extension StreamsViewController : UICollectionViewDelegateFlowLayout {
     func collectionView(collectionView: UICollectionView,
         layout collectionViewLayout: UICollectionViewLayout,
         insetForSectionAtIndex section: Int) -> UIEdgeInsets {
-            let topInset = (section == 0) ? TOP_BAR_HEIGHT : ITEMS_INSETS_X
-            return UIEdgeInsets(top: topInset, left: ITEMS_INSETS_X, bottom: ITEMS_INSETS_Y, right: ITEMS_INSETS_X)
+            return UIEdgeInsets(top: TOP_BAR_HEIGHT + ITEMS_INSETS_Y, left: ITEMS_INSETS_X, bottom: ITEMS_INSETS_Y, right: ITEMS_INSETS_X)
     }
     
 }
@@ -183,19 +153,19 @@ extension StreamsViewController : UICollectionViewDelegateFlowLayout {
 // MARK - UICollectionViewDataSource interface
 //////////////////////////////////////////////
 
-extension StreamsViewController : UICollectionViewDataSource {
+extension TwitchStreamsViewController {
     
-    func numberOfSectionsInCollectionView(collectionView: UICollectionView) -> Int {
+    override func numberOfSectionsInCollectionView(collectionView: UICollectionView) -> Int {
         //The number of possible rows
         return 1
     }
     
-    func collectionView(collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+    override func collectionView(collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         // If the count of streams allows the current row to be full
         return streams.count
     }
     
-    func collectionView(collectionView: UICollectionView, cellForItemAtIndexPath indexPath: NSIndexPath) -> UICollectionViewCell {
+    override func collectionView(collectionView: UICollectionView, cellForItemAtIndexPath indexPath: NSIndexPath) -> UICollectionViewCell {
         let cell : ItemCellView = collectionView.dequeueReusableCellWithReuseIdentifier(ItemCellView.CELL_IDENTIFIER, forIndexPath: indexPath) as! ItemCellView
         cell.setRepresentedItem(streams[indexPath.row])
         return cell

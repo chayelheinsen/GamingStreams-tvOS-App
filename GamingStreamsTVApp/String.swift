@@ -42,3 +42,30 @@ extension String {
         return UIColor(hexString: self)
     }
 }
+
+extension String {
+    func widthWithConstrainedHeight(height: CGFloat, font: UIFont) -> CGFloat {
+        let constraintRect = CGSize(width: CGFloat.max, height: height)
+        
+        let boundingBox = self.boundingRectWithSize(constraintRect, options: [.UsesFontLeading, .UsesLineFragmentOrigin], attributes: [NSFontAttributeName: font], context: nil)
+        
+        return boundingBox.width
+    }
+}
+
+extension String {
+    static func randomStringWithLength(len: Int) -> String {
+        
+        let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        
+        var randomString = ""
+        
+        for (var i=0; i < len; i++){
+            let length = UInt32(letters.characters.count)
+            let rand = Int(arc4random_uniform(length))
+            randomString.append(letters[letters.startIndex.advancedBy(rand)])
+        }
+        
+        return randomString
+    }
+}

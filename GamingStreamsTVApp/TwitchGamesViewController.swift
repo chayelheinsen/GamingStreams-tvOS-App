@@ -6,16 +6,19 @@
 
 import UIKit
 
-class GamesViewController : LoadingViewController {
+class TwitchGamesViewController : LoadingViewController {
 
     private let LOADING_BUFFER = 20
     private let NUM_COLUMNS = 5
-    private let ITEMS_INSETS_X : CGFloat = 25
-    private let ITEMS_INSETS_Y : CGFloat = 0
-    private let GAME_IMG_HEIGHT_RATIO : CGFloat = 1.39705882353 //Computed from sampled image from twitch api
+    override var ITEMS_INSETS_X : CGFloat {
+        get {
+            return 25
+        }
+    }
     
     private var searchField: UITextField!
     private var games = [TwitchGame]()
+    private var authButton: UIButton?
     
     convenience init(){
         self.init(nibName: nil, bundle: nil)
@@ -24,9 +27,6 @@ class GamesViewController : LoadingViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
-        let longPressRecognizer = UILongPressGestureRecognizer(target: self, action: "handleLongPress:")
-        longPressRecognizer.cancelsTouchesInView = true
-        self.view.addGestureRecognizer(longPressRecognizer)
         
         configureViews()
     }
@@ -66,7 +66,6 @@ class GamesViewController : LoadingViewController {
             
             self.games = games
             dispatch_async(dispatch_get_main_queue(), {
-                
                 self.removeLoadingView()
                 self.collectionView.reloadData()
             })
@@ -82,46 +81,24 @@ class GamesViewController : LoadingViewController {
         self.searchField.delegate = self
         self.searchField.textAlignment = .Center
         
-        //do the top bar first
-        self.topBar = TopBarView(frame: CGRectZero, withMainTitle: "Top Games", supplementalView: self.searchField)
-        self.topBar.translatesAutoresizingMaskIntoConstraints = false
-        self.view.addSubview(self.topBar)
+        if TokenHelper.getTwitchToken() == nil {
+            self.authButton = UIButton(type: .System)
+            self.authButton?.translatesAutoresizingMaskIntoConstraints = false
+            self.authButton?.setTitle("Authenticate", forState: .Normal)
+            self.authButton?.addTarget(self, action: Selector("authorizeUser"), forControlEvents: .PrimaryActionTriggered)
+        }
         
-        //then do the collection view
-        let layout : UICollectionViewFlowLayout = UICollectionViewFlowLayout()
+        let imageView = UIImageView(image: UIImage(named: "twitch"))
+        imageView.contentMode = .ScaleAspectFit
         
-        layout.scrollDirection = UICollectionViewScrollDirection.Vertical
-        layout.minimumInteritemSpacing = ITEMS_INSETS_X
-        layout.minimumLineSpacing = 50
-        
-        self.collectionView = UICollectionView(frame: CGRectZero, collectionViewLayout: layout)
-        self.collectionView.translatesAutoresizingMaskIntoConstraints = false
-        self.collectionView.registerClass(ItemCellView.classForCoder(), forCellWithReuseIdentifier: ItemCellView.CELL_IDENTIFIER)
-        self.collectionView.dataSource = self
-        self.collectionView.delegate = self
-        self.collectionView.contentInset = UIEdgeInsets(top: TOP_BAR_HEIGHT + ITEMS_INSETS_Y, left: ITEMS_INSETS_X, bottom: ITEMS_INSETS_Y, right: ITEMS_INSETS_X)
-        
-        self.view.addSubview(self.collectionView)
-        self.view.bringSubviewToFront(self.topBar)
-        
-        let viewDict = ["topbar" : topBar, "collection" : collectionView]
-        
-        self.view.addConstraint(NSLayoutConstraint(item: topBar, attribute: .Height, relatedBy: .Equal, toItem: nil, attribute: .NotAnAttribute, multiplier: 1.0, constant: TOP_BAR_HEIGHT))
-        
-        self.view.addConstraints(NSLayoutConstraint.constraintsWithVisualFormat("V:|[topbar]", options: [], metrics: nil, views: viewDict))
-        
-        self.view.addConstraints(NSLayoutConstraint.constraintsWithVisualFormat("V:|[collection]|", options: [], metrics: nil, views: viewDict))
-        
-        self.view.addConstraints(NSLayoutConstraint.constraintsWithVisualFormat("H:|[topbar]|", options: [], metrics: nil, views: viewDict))
-        
-        self.view.addConstraints(NSLayoutConstraint.constraintsWithVisualFormat("H:|[collection]|", options: [], metrics: nil, views: viewDict))
+        super.configureViews("Top Games", centerView: imageView, leftView: self.searchField, rightView: self.authButton)
         
     }
     
-    func handleLongPress(gestureRecognizer: UILongPressGestureRecognizer) {
-        TwitchApi.authenticate { (authorized) -> () in
-            print(authorized)
-        }
+    func authorizeUser() {
+        let qrController = TwitchAuthViewController()
+        qrController.delegate = self
+        presentViewController(qrController, animated: true, completion: nil)
     }
     
     override func reloadContent() {
@@ -135,11 +112,11 @@ class GamesViewController : LoadingViewController {
 ////////////////////////////////////////////
 
 
-extension GamesViewController : UICollectionViewDelegate {
+extension TwitchGamesViewController {
     
     func collectionView(collectionView: UICollectionView, didSelectItemAtIndexPath indexPath: NSIndexPath) {
         let selectedGame = games[indexPath.row]
-        let streamsViewController = StreamsViewController(game: selectedGame)
+        let streamsViewController = TwitchStreamsViewController(game: selectedGame)
         
         self.presentViewController(streamsViewController, animated: true, completion: nil)
     }
@@ -170,10 +147,10 @@ extension GamesViewController : UICollectionViewDelegate {
                     paths.append(NSIndexPath(forItem: i + self.games.count, inSection: 0))
                 }
                 
-                self.collectionView!.performBatchUpdates({
+                self.collectionView.performBatchUpdates({
                     self.games.appendContentsOf(filteredGames)
                     
-                    self.collectionView!.insertItemsAtIndexPaths(paths)
+                    self.collectionView.insertItemsAtIndexPaths(paths)
                     
                     }, completion: nil)
             }
@@ -185,7 +162,7 @@ extension GamesViewController : UICollectionViewDelegate {
 // MARK - UICollectionViewDelegateFlowLayout interface
 //////////////////////////////////////////////////////
 
-extension GamesViewController : UICollectionViewDelegateFlowLayout {
+extension TwitchGamesViewController : UICollectionViewDelegateFlowLayout {
     
     func collectionView(collectionView: UICollectionView,
         layout collectionViewLayout: UICollectionViewLayout,
@@ -200,8 +177,7 @@ extension GamesViewController : UICollectionViewDelegateFlowLayout {
     func collectionView(collectionView: UICollectionView,
         layout collectionViewLayout: UICollectionViewLayout,
         insetForSectionAtIndex section: Int) -> UIEdgeInsets {
-            let topInset = (section == 0) ? TOP_BAR_HEIGHT : ITEMS_INSETS_X
-            return UIEdgeInsets(top: topInset, left: ITEMS_INSETS_X, bottom: ITEMS_INSETS_Y, right: ITEMS_INSETS_X)
+            return UIEdgeInsets(top: TOP_BAR_HEIGHT + ITEMS_INSETS_Y, left: ITEMS_INSETS_X, bottom: ITEMS_INSETS_Y, right: ITEMS_INSETS_X)
     }
 }
 
@@ -209,19 +185,19 @@ extension GamesViewController : UICollectionViewDelegateFlowLayout {
 // MARK - UICollectionViewDataSource interface
 //////////////////////////////////////////////
 
-extension GamesViewController : UICollectionViewDataSource {
+extension TwitchGamesViewController {
     
-    func numberOfSectionsInCollectionView(collectionView: UICollectionView) -> Int {
+    override func numberOfSectionsInCollectionView(collectionView: UICollectionView) -> Int {
         //The number of sections
         return 1
     }
     
-    func collectionView(collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+    override func collectionView(collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         // If the count of games allows the current row to be full
         return games.count
     }
     
-    func collectionView(collectionView: UICollectionView, cellForItemAtIndexPath indexPath: NSIndexPath) -> UICollectionViewCell {
+    override func collectionView(collectionView: UICollectionView, cellForItemAtIndexPath indexPath: NSIndexPath) -> UICollectionViewCell {
         let cell : ItemCellView = collectionView.dequeueReusableCellWithReuseIdentifier(ItemCellView.CELL_IDENTIFIER, forIndexPath: indexPath) as! ItemCellView
         cell.setRepresentedItem(games[indexPath.row])
         return cell
@@ -232,24 +208,32 @@ extension GamesViewController : UICollectionViewDataSource {
 // MARK - UITextFieldDelegate interface
 //////////////////////////////////////////////
 
-extension GamesViewController : UITextFieldDelegate {
+extension TwitchGamesViewController : UITextFieldDelegate {
     
     func textFieldDidEndEditing(textField: UITextField) {
         guard let term = textField.text where !term.isEmpty else {
             return
         }
         
-        let searchViewController = SearchResultsViewController(seatchTerm: term)
+        let searchViewController = TwitchSearchResultsViewController(seatchTerm: term)
         presentViewController(searchViewController, animated: true, completion: nil)
     }
 }
 
 //////////////////////////////////////////////
-// MARK - UISearchResultsUpdating interface
+// MARK - QRCodeDelegate interface
 //////////////////////////////////////////////
 
-//extension GamesViewController : UISearchResultsUpdating {
-//    func updateSearchResultsForSearchController(searchController: UISearchController) {
-//        print("doesn't do anything yet")
-//    }
-//}
+extension TwitchGamesViewController: QRCodeDelegate {
+    
+    func qrCodeViewControllerFinished(success: Bool, data: [String : AnyObject]?) {
+        dispatch_async(dispatch_get_main_queue()) { () -> Void in
+            if success {
+                self.authButton?.removeFromSuperview()
+                self.authButton = nil
+            }
+            self.dismissViewControllerAnimated(true, completion: nil)
+        }
+    }
+    
+}
